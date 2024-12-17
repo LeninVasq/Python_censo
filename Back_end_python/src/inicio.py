@@ -9,7 +9,9 @@ def get_poblacion():
     data = get_data_poblacion()
     
     return jsonify({
-        "data": data
+        "data": data,
+        
+        
     })
 
 
