@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Poblacion from './python/poblacion';
+import Poblacion from './views/Poblacion';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
