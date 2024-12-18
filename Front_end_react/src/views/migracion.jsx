@@ -15,15 +15,13 @@ import {
     Area,
     RadarChart,
     Radar,
-    PolarGrid,
-    PolarAngleAxis,
-    PolarRadiusAxis,
 } from 'recharts';
 import { Button, FormControl, InputGroup, Container, Row, Col, Card, Dropdown } from 'react-bootstrap';
+import { PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { API_BASE_URL } from '../url';
 
-const Poblacion = () => {
-    const [poblaciones, setPoblaciones] = useState([]);
+const Migracion = () => {
+    const [migracionData, setMigracionData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState('');
@@ -31,89 +29,132 @@ const Poblacion = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [height, setHeight] = useState(400);
     const [graphType, setGraphType] = useState('Bar');
-    const [filterCategory, setFilterCategory] = useState('Todos');
+    const [sortColumn, setSortColumn] = useState(null);
+    const [sortDirection, setSortDirection] = useState('asc');
+    const [filterCategory, setFilterCategory] = useState('Todos'); // Nuevo estado para categoría
 
     const formatNumber = (num) => new Intl.NumberFormat('en-US').format(num);
 
-    // Formateo de los datos de distribución a porcentaje
-    const formatPercentage = (value) => {
-        if (value !== null && value !== undefined) {
-            return `${(value * 100).toFixed(2)}%`;  // Multiplicamos por 100 y damos formato con 2 decimales
-        }
-        return '-';
-    };
-
     useEffect(() => {
-        const fetchPoblaciones = async () => {
+        const fetchMigracionData = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}poblacion`);
+                const response = await fetch(`${API_BASE_URL}migracion`); // Cambié la URL de 'tics' a 'migracion'
                 const data = await response.json();
 
                 if (data && data.data && Array.isArray(data.data)) {
-                    const poblacionesTransformadas = data.data.slice(1).map((fila) => ({
+                    const migracionTransformados = data.data.slice(1).map((fila) => ({
                         departamento: fila[0],
-                        hombres: fila[1] !== null ? parseInt(fila[1], 10) : null,
-                        mujeres: fila[2] !== null ? parseInt(fila[2], 10) : null,
-                        total: fila[3] !== null ? parseInt(fila[3], 10) : null,
-                        distribucion: fila[4] !== null ? parseFloat(fila[4]) : null,
-                    }));
-                    setPoblaciones(poblacionesTransformadas);
+                        aquiMismo: fila[1] !== null ? parseInt(fila[1], 10) : null,
+                        otroLugar: fila[2] !== null ? parseInt(fila[2], 10) : null,
+                        otroPais: fila[3] !== null ? parseInt(fila[3], 10) : null,
+                        noSabe: fila[4] !== null ? parseInt(fila[4], 10) : null,
+                        total: fila[5] !== null ? parseInt(fila[5], 10) : null,
+                    })).filter((fila) => 
+                        fila.aquiMismo !== null && 
+                        fila.otroLugar !== null && 
+                        fila.otroPais !== null && 
+                        fila.noSabe !== null && 
+                        fila.total !== null
+                    );
+                    setMigracionData(migracionTransformados);
                 } else {
                     setError('Datos no disponibles o en formato incorrecto');
                 }
             } catch (error) {
-                console.error('Error al obtener los datos de población:', error);
+                console.error('Error al obtener los datos de Migración:', error);
                 setError('Hubo un error al obtener los datos');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchPoblaciones();
+        fetchMigracionData();
     }, []);
 
-    const filteredData = poblaciones.filter((data) => {
+    // Filtrar los datos según el filtro de categoría seleccionado
+    const filteredData = migracionData.filter((data) => {
         if (filterCategory === 'Todos') {
             return data.departamento && data.departamento.toLowerCase().includes(search.toLowerCase());
         }
         return data[filterCategory] !== null && data[filterCategory] !== undefined;
     });
 
+    // Obtener las columnas basadas en la categoría seleccionada
     const getColumns = () => {
         if (filterCategory === 'Todos') {
             return [
                 { name: 'Departamento', selector: (row) => row.departamento, sortable: true },
-                { name: 'Hombres', selector: (row) => formatNumber(row.hombres), sortable: true },
-                { name: 'Mujeres', selector: (row) => formatNumber(row.mujeres), sortable: true },
+                { name: 'Aquí, en este mismo lugar / departamento', selector: (row) => formatNumber(row.aquiMismo), sortable: true },
+                { name: 'En otro lugar / departamento', selector: (row) => formatNumber(row.otroLugar), sortable: true },
+                { name: 'En otro país', selector: (row) => formatNumber(row.otroPais), sortable: true },
+                { name: 'No sabe', selector: (row) => formatNumber(row.noSabe), sortable: true },
                 { name: 'Total', selector: (row) => formatNumber(row.total), sortable: true },
-                { name: 'Distribución', selector: (row) => formatPercentage(row.distribucion), sortable: true },
             ];
-        } else if (filterCategory === 'hombres') {
+        } else if (filterCategory === 'aquiMismo') {
             return [
                 { name: 'Departamento', selector: (row) => row.departamento, sortable: true },
-                { name: 'Hombres', selector: (row) => formatNumber(row.hombres), sortable: true },
+                { name: 'Aquí, en este mismo lugar / departamento', selector: (row) => formatNumber(row.aquiMismo), sortable: true },
             ];
-        } else if (filterCategory === 'mujeres') {
+        } else if (filterCategory === 'otroLugar') {
             return [
                 { name: 'Departamento', selector: (row) => row.departamento, sortable: true },
-                { name: 'Mujeres', selector: (row) => formatNumber(row.mujeres), sortable: true },
+                { name: 'En otro lugar / departamento', selector: (row) => formatNumber(row.otroLugar), sortable: true },
+            ];
+        } else if (filterCategory === 'otroPais') {
+            return [
+                { name: 'Departamento', selector: (row) => row.departamento, sortable: true },
+                { name: 'En otro país', selector: (row) => formatNumber(row.otroPais), sortable: true },
+            ];
+        } else if (filterCategory === 'noSabe') {
+            return [
+                { name: 'Departamento', selector: (row) => row.departamento, sortable: true },
+                { name: 'No sabe', selector: (row) => formatNumber(row.noSabe), sortable: true },
             ];
         } else if (filterCategory === 'total') {
             return [
                 { name: 'Departamento', selector: (row) => row.departamento, sortable: true },
                 { name: 'Total', selector: (row) => formatNumber(row.total), sortable: true },
             ];
-        } else if (filterCategory === 'distribucion') {
-            return [
-                { name: 'Departamento', selector: (row) => row.departamento, sortable: true },
-                { name: 'Distribución', selector: (row) => formatPercentage(row.distribucion), sortable: true },
-            ];
         }
         return [];
     };
 
+    // Ordenar los datos
+    const sortedData = [...filteredData].sort((a, b) => {
+        if (sortColumn) {
+            const aValue = a[sortColumn];
+            const bValue = b[sortColumn];
+
+            if (aValue < bValue) {
+                return sortDirection === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return sortDirection === 'asc' ? 1 : -1;
+            }
+            return 0;
+        }
+        return 0;
+    });
+
+    const currentData = sortedData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+    const handleRowsPerPageChange = (e) => {
+        const newRowsPerPage = Number(e.target.value);
+        setRowsPerPage(newRowsPerPage);
+        setHeight(newRowsPerPage * 45);
+    };
+
     const handleGraphTypeChange = (type) => {
         setGraphType(type);
+    };
+
+    const handleSort = (column) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
     };
 
     return (
@@ -123,7 +164,7 @@ const Poblacion = () => {
                 <Col lg={6}>
                     <Card className="shadow-sm">
                         <Card.Header className="bg-success text-white">
-                            <h5 className="mb-0">Datos de Población</h5>
+                            <h5 className="mb-0">Datos de Migración</h5>
                         </Card.Header>
                         <Card.Body>
                             {/* Buscador y control de filas */}
@@ -147,7 +188,7 @@ const Poblacion = () => {
                                     <FormControl
                                         as="select"
                                         value={rowsPerPage}
-                                        onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                                        onChange={handleRowsPerPageChange}
                                     >
                                         <option value={5}>5</option>
                                         <option value={10}>10</option>
@@ -165,10 +206,11 @@ const Poblacion = () => {
 
                                     <Dropdown.Menu>
                                         <Dropdown.Item onClick={() => setFilterCategory('Todos')}>Todos</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterCategory('hombres')}>Hombres</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterCategory('mujeres')}>Mujeres</Dropdown.Item>
+                                        <Dropdown.Item onClick={() => setFilterCategory('aquiMismo')}>Aquí, en este mismo lugar</Dropdown.Item>
+                                        <Dropdown.Item onClick={() => setFilterCategory('otroLugar')}>En otro lugar</Dropdown.Item>
+                                        <Dropdown.Item onClick={() => setFilterCategory('otroPais')}>En otro país</Dropdown.Item>
+                                        <Dropdown.Item onClick={() => setFilterCategory('noSabe')}>No sabe</Dropdown.Item>
                                         <Dropdown.Item onClick={() => setFilterCategory('total')}>Total</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterCategory('distribucion')}>Distribución</Dropdown.Item>
                                     </Dropdown.Menu>
                                 </Dropdown>
                             </div>
@@ -176,7 +218,10 @@ const Poblacion = () => {
                             {/* Tabla de datos */}
                             <DataTable
                                 columns={getColumns()}
-                                data={filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)}
+                                data={currentData}
+                                onSort={handleSort}
+                                sortDirection={sortDirection}
+                                sortColumn={sortColumn}
                                 highlightOnHover
                             />
 
@@ -235,15 +280,7 @@ const Poblacion = () => {
                                         <Tooltip formatter={(value) => formatNumber(value)} />
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <Legend />
-                                        {filterCategory === 'Todos' ? (
-                                            <>
-                                                <Bar dataKey="hombres" fill="#28a745" />
-                                                <Bar dataKey="mujeres" fill="#ff7300" />
-                                                <Bar dataKey="total" fill="#0088fe" />
-                                            </>
-                                        ) : (
-                                            <Bar dataKey={filterCategory} fill="#28a745" />
-                                        )}
+                                        <Bar dataKey={filterCategory === 'Todos' ? 'aquiMismo' : filterCategory} fill="#28a745" />
                                     </BarChart>
                                 </ResponsiveContainer>
                             )}
@@ -256,15 +293,7 @@ const Poblacion = () => {
                                         <Tooltip formatter={(value) => formatNumber(value)} />
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <Legend />
-                                        {filterCategory === 'Todos' ? (
-                                            <>
-                                                <Line dataKey="hombres" stroke="#28a745" />
-                                                <Line dataKey="mujeres" stroke="#ff7300" />
-                                                <Line dataKey="total" stroke="#0088fe" />
-                                            </>
-                                        ) : (
-                                            <Line dataKey={filterCategory} stroke="#28a745" />
-                                        )}
+                                        <Line dataKey={filterCategory === 'Todos' ? 'aquiMismo' : filterCategory} stroke="#28a745" />
                                     </LineChart>
                                 </ResponsiveContainer>
                             )}
@@ -277,15 +306,7 @@ const Poblacion = () => {
                                         <Tooltip formatter={(value) => formatNumber(value)} />
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <Legend />
-                                        {filterCategory === 'Todos' ? (
-                                            <>
-                                                <Area dataKey="hombres" fill="#28a745" />
-                                                <Area dataKey="mujeres" fill="#ff7300" />
-                                                <Area dataKey="total" fill="#0088fe" />
-                                            </>
-                                        ) : (
-                                            <Area dataKey={filterCategory} fill="#28a745" />
-                                        )}
+                                        <Area dataKey={filterCategory === 'Todos' ? 'aquiMismo' : filterCategory} fill="#28a745" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             )}
@@ -296,15 +317,13 @@ const Poblacion = () => {
                                         <PolarGrid />
                                         <PolarAngleAxis dataKey="departamento" />
                                         <PolarRadiusAxis />
-                                        {filterCategory === 'Todos' ? (
-                                            <>
-                                                <Radar name="Hombres" dataKey="hombres" stroke="#28a745" fill="#28a745" fillOpacity={0.6} />
-                                                <Radar name="Mujeres" dataKey="mujeres" stroke="#ff7300" fill="#ff7300" fillOpacity={0.6} />
-                                                <Radar name="Total" dataKey="total" stroke="#0088fe" fill="#0088fe" fillOpacity={0.6} />
-                                            </>
-                                        ) : (
-                                            <Radar name={filterCategory} dataKey={filterCategory} stroke="#28a745" fill="#28a745" fillOpacity={0.6} />
-                                        )}
+                                        <Radar
+                                            name={filterCategory === 'Todos' ? 'aquiMismo' : filterCategory}
+                                            dataKey={filterCategory === 'Todos' ? 'aquiMismo' : filterCategory}
+                                            stroke="#28a745"
+                                            fill="#28a745"
+                                            fillOpacity={0.6}
+                                        />
                                     </RadarChart>
                                 </ResponsiveContainer>
                             )}
@@ -316,4 +335,4 @@ const Poblacion = () => {
     );
 };
 
-export default Poblacion;
+export default Migracion;
